@@ -33,7 +33,7 @@ Nodes: 1, 2, 3, 4
 Arcs: (1,3), (1,2), (3,4), (2,4), (3,2)
 ```
 
-## Academic Purposes
+## Research Purposes
 
 Designed for educational purposes. Serves as a starting point for more complex traffic assignment models and could be adapted for real-time traffic simulation, but it is not intended for production use. It prioritizes clarity over performance, making it suitable for learning and experimentation.
 Penn State University (PSU), CE 521 Transportation Network and Systems Analysis. Fall 2025.
