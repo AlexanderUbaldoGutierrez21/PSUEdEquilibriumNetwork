@@ -5,17 +5,17 @@ import heapq
 def t_a(x):
     """Arc indices: 0:(1,3), 1:(1,2), 2:(3,4), 3:(2,4), 4:(3,2)"""
     return np.array([50 + x[0], 10 + x[1], 10 * x[2], 50 + x[3], 10 + x[4]])
+
 def t_prime():
     return np.array([1.0, 1.0, 10.0, 1.0, 1.0])
 
-# FRANK-WOLFE ALGORITHM WITH DIMINISHING STEP SIZE 
+# FRANK-WOLFE ALGORITHM WITH ANALYTICAL LINE SEARCH
 
-def frank_wolfe_diminishing(TMF_threshold=0.01, max_iter=2000):
+def frank_wolfe_diminishing(TMF_threshold=0.01, max_iter=50000):
 
     # NETWORK DEFINITION (OD PAIR 1-4) 
     A = { 1: [(3, 0), (2, 1)], 2: [(4, 3)], 3: [(4, 2), (2, 4)], 4: [] }
     num_arcs = 5
-    t_prime_vec = t_prime()
 
     # INITIALIZATION (ALL-OR-NOTHING ON FREE-FLOW)
     kappa_0 = 50.0
@@ -26,12 +26,13 @@ def frank_wolfe_diminishing(TMF_threshold=0.01, max_iter=2000):
     x_k[3] = D_0 # FLOW ON (2, 4)
     D_k = D_0
 
-    TMF = float('inf')
     k = 0
+    prev_D = D_0
+    convergence_count = 0
 
     print(f"Starting FW with Analytical Line Search...")
 
-    while TMF > TMF_threshold and k < max_iter:
+    while k < max_iter:
         k += 1
 
         # CALCULATE ARC COSTS 
@@ -70,39 +71,40 @@ def frank_wolfe_diminishing(TMF_threshold=0.01, max_iter=2000):
                 y[arc_index] = D_new
                 current_node = prev_node
 
-        # ANALYTICAL LINE SEARCH (ALPHA) 
-        d = y - x_k 
+        # CONVERGENCE CHECK: relative change in demand
+        if abs(D_new - prev_D) < 0.001:
+            convergence_count += 1
+        else:
+            convergence_count = 0
+        prev_D = D_new
+        
+        if convergence_count >= 100:
+            break
 
+        # ANALYTICAL LINE SEARCH (FW)
+        d = y - x_k
+        t_prime_vec = t_prime()
+        
         A_coeff = np.sum(d**2 * t_prime_vec)
         B_coeff = np.sum(current_costs * d)
-
-        if A_coeff > 1e-9: 
+        
+        if A_coeff > 1e-10:
             alpha_star = -B_coeff / A_coeff
-            alpha = np.clip(alpha_star, 0.0, 1.0)
+            alpha = min(1.0, max(1e-6, alpha_star)) if alpha_star > 0 else 1e-6
         else:
-            alpha = 0.0 
+            alpha = 1e-6
 
-        # UPDATE FLOWS AND CONVERGENE CHECK 
-        d = y - x_k 
-        x_k_plus_1 = x_k + alpha * d
-
-        # CONVERGENCE CHECK: TMF IS CALCULATED BETWEEN NEW FLOW AND THE TARGET Y
-        TMF = np.sum(np.abs(x_k_plus_1 - y))
-
-        x_k = x_k_plus_1
+        # UPDATE FLOWS
+        x_k = x_k + alpha * d
         D_k = D_new
-
-        # DEBUGGING HOOK: TO SHOW THE SLOW CONVERGENCE
-        # IF K == 100:
-        #    PRINT("KK") PRNT (F"--- ITERATION 100 RESULTS ---")
-        #    PRINT(F"KAPPA: {KAPPA:.4F}, D: {D_K:.4F}, TMF: {TMF:.6F}")
 
     # REPORT FINAL RESULTS
     final_costs = t_a(x_k)
+    TMF = np.sum(np.abs(y - x_k))
     AEC = (np.sum(final_costs * x_k) - kappa * D_k) / D_k if D_k > 0 else 0
 
     print("\n--- Final Equilibrium Results ---")
-    print(f"Converged after {k} iterations (TMF < {TMF_threshold})")
+    print(f"Converged after {k} iterations")
     print("-" * 40)
     print(f"Equilibrium Cost (kappa): {kappa:.4f}")
     print(f"Equilibrium Demand (D): {D_k:.4f}")
