@@ -23,8 +23,10 @@ The algorithm:
 1. Initializes flow using all-or-nothing assignment on free-flow costs
 2. Computes shortest paths using Dijkstra with current arc costs
 3. Performs analytical line search to find optimal step size
-4. Updates flow vector and checks TMF convergence criterion
-5. Repeats until convergence or maximum iterations reached
+4. Updates flow vector based on demand stability criterion
+5. Repeats until demand stabilizes or maximum iterations reached
+
+The implementation handles the demand feedback loop where D = max(0, 15 - kappa/30).
 
 ### Network Structure
 
